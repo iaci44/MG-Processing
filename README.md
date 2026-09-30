@@ -2,7 +2,7 @@
 
 A reproducible Linux pipeline for shotgun metagenomic data processing.
 
-This workflow performs:
+This workflow automates the main steps required for shotgun metagenomic analysis:
 
 - Quality control of raw FASTQ reads
 - Optional trimming of low-quality reads
@@ -134,17 +134,22 @@ Pipeline parameters are stored in:
 config/config.sh
 ```
 
-Main variables:
+The configuration file contains:
+
+- database paths
+- computational resources
+- software parameters
+
+
+Example:
 
 ```bash
-PROJECT_DIR=$HOME/PROJECT
-
 THREADS=12
 ```
 
-Modify these according to your system.
+Modify these parameters according to the available system resources.
 
-Database paths are also defined in this file:
+Database paths are defined in:
 
 ```bash
 HUMAN_DB
@@ -157,19 +162,52 @@ UTILITY_DB
 
 ---
 
+# Project setup
+
+The project name is provided when launching the pipeline.
+
+Example:
+
+```bash
+bash MG_pipeline.sh My_Project
+```
+
+The pipeline will automatically create and use the following project directory:
+
+```
+$HOME/My_Project/
+```
+
+with the structure:
+
+```
+My_Project/
+
+├── raw_fastq/
+├── metadata/
+├── results/
+└── logs/
+```
+
+
+This allows multiple datasets to be analyzed independently without modifying the pipeline code.
+
+
+---
+
 # Human genome database
 
 The pipeline requires a Bowtie2 index of the human genome for host read removal.
 
 This database is **not downloaded automatically**.
 
-Expected location:
+The expected location is:
 
 ```
 ~/databases/host_human/human_GRCh38
 ```
 
-The path can be modified according to the system configuration in:
+The path can be modified in:
 
 ```
 config/config.sh
@@ -196,7 +234,7 @@ The pipeline requires paired-end shotgun metagenomic FASTQ files.
 FASTQ files must be stored in:
 
 ```
-PROJECT/raw_fastq/
+My_Project/raw_fastq/
 ```
 
 The expected naming convention is:
@@ -221,25 +259,24 @@ The pipeline automatically detects samples from files ending with:
 .1.fastq.gz
 ```
 
-and creates the sample list used throughout the workflow.
-
-
-Example project structure:
+and creates:
 
 ```
-PROJECT/
+metadata/samples.txt
+```
 
-├── raw_fastq/
-│   ├── sample01.1.fastq.gz
-│   ├── sample01.2.fastq.gz
-│   ├── sample02.1.fastq.gz
-│   └── sample02.2.fastq.gz
-│
-├── metadata/
-│
-├── results/
-│
-└── logs/
+containing the sample names used throughout the workflow.
+
+
+Example:
+
+```
+raw_fastq/
+
+├── sample01.1.fastq.gz
+├── sample01.2.fastq.gz
+├── sample02.1.fastq.gz
+└── sample02.2.fastq.gz
 ```
 
 
@@ -247,17 +284,17 @@ PROJECT/
 
 # Running the pipeline
 
-Launch the complete workflow:
+Launch the complete workflow by specifying the project name:
 
 ```bash
-bash MG_pipeline.sh
+bash MG_pipeline.sh My_Project
 ```
 
 
 For long analyses (especially HUMAnN), run in background:
 
 ```bash
-nohup bash MG_pipeline.sh > logs/pipeline.log 2>&1 &
+nohup bash MG_pipeline.sh My_Project > logs/pipeline.log 2>&1 &
 ```
 
 
@@ -341,6 +378,8 @@ results/04_humann3/
 ---
 
 # Monitoring HUMAnN
+
+HUMAnN analyses can require several hours or days depending on dataset size.
 
 To monitor a running analysis:
 

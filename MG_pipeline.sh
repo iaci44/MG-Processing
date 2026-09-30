@@ -13,7 +13,33 @@ set -e
 
 source config/config.sh
 
+#############################################################
+# PROJECT NAME
+#############################################################
 
+if [ -z "$1" ]
+
+then
+
+echo "Error: project name missing"
+
+echo "Usage: bash MG_pipeline.sh PROJECT_NAME"
+
+exit 1
+
+fi
+
+
+PROJECT_NAME=$1
+
+PROJECT_DIR=${HOME}/${PROJECT_NAME}
+
+
+echo "Running project:"
+echo ${PROJECT_NAME}
+
+echo "Project directory:"
+echo ${PROJECT_DIR}
 #############################################################
 # CREATE DIRECTORIES
 #############################################################

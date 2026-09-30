@@ -19,10 +19,25 @@ echo "======================================"
 
 conda activate HUMAnN-func
 
+#############################################################
+# PROJECT NAME
+#############################################################
 
-PROJECT_DIR=$HOME/PROJECT
+if [ -z "$1" ]
+
+then
+
+echo "Error: project name missing"
+echo "Usage: bash merge_results.sh PROJECT_NAME"
+
+exit 1
+
+fi
 
 
+PROJECT_NAME=$1
+
+PROJECT_DIR=${HOME}/${PROJECT_NAME}
 HUMANN_DIR=${PROJECT_DIR}/results/04_humann3
 
 

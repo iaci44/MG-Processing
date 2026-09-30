@@ -56,17 +56,25 @@ mkdir -p \
 $H/databases/{uniref,chocophlan,metaphlan,host_human,utility_mapping}
 
 
+#############################################################
+# PROJECT FOLDERS
+#############################################################
 
-mkdir -p \
-$H/PROJECT/{raw_fastq,metadata,scripts,logs}
+echo "Creating project folders..."
+
+PROJECT_NAME=${1:-MG_Project}
+
+PROJECT_DIR=${H}/${PROJECT_NAME}
 
 
-
-mkdir -p \
-$H/PROJECT/results/{01_qc,02_host_removed,03_metaphlan,04_humann3}
+mkdir -p ${PROJECT_DIR}/{raw_fastq,metadata,scripts,logs}
 
 
+mkdir -p ${PROJECT_DIR}/results/{01_qc,02_host_removed,03_metaphlan,04_humann3}
 
+
+echo "Project created:"
+echo ${PROJECT_DIR}
 
 #############################################################
 # DOWNLOAD HUMANN DATABASES
