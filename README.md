@@ -87,7 +87,7 @@ MG-Processing/
 ## 1. Clone repository
 
 ```bash
-git clone https://github.com/USERNAME/MG-Processing.git
+git clone https://github.com/iaci44/MG-Processing.git
 
 cd MG-Processing
 ```
@@ -169,6 +169,12 @@ Expected location:
 ~/databases/host_human/human_GRCh38
 ```
 
+The path can be modified according to the system configuration in:
+
+```
+config/config.sh
+```
+
 The folder should contain Bowtie2 index files:
 
 ```
@@ -185,20 +191,55 @@ human_GRCh38.rev.2.bt2
 
 # Input data
 
-FASTQ files must be paired-end and follow this naming convention:
+The pipeline requires paired-end shotgun metagenomic FASTQ files.
 
-```
-sample01_R1.fastq.gz
-sample01_R2.fastq.gz
-
-sample02_R1.fastq.gz
-sample02_R2.fastq.gz
-```
-
-All FASTQ files must be placed in:
+FASTQ files must be stored in:
 
 ```
 PROJECT/raw_fastq/
+```
+
+The expected naming convention is:
+
+```
+sample01.1.fastq.gz
+sample01.2.fastq.gz
+
+sample02.1.fastq.gz
+sample02.2.fastq.gz
+```
+
+where:
+
+- `.1.fastq.gz` corresponds to forward reads (R1)
+- `.2.fastq.gz` corresponds to reverse reads (R2)
+
+
+The pipeline automatically detects samples from files ending with:
+
+```
+.1.fastq.gz
+```
+
+and creates the sample list used throughout the workflow.
+
+
+Example project structure:
+
+```
+PROJECT/
+
+├── raw_fastq/
+│   ├── sample01.1.fastq.gz
+│   ├── sample01.2.fastq.gz
+│   ├── sample02.1.fastq.gz
+│   └── sample02.2.fastq.gz
+│
+├── metadata/
+│
+├── results/
+│
+└── logs/
 ```
 
 
@@ -242,6 +283,8 @@ Optional trimming can be enabled using:
 - fastp
 
 
+---
+
 ## 2. Host DNA removal
 
 Human reads are removed using:
@@ -255,6 +298,8 @@ Output:
 results/02_host_removed/
 ```
 
+
+---
 
 ## 3. Taxonomic profiling
 
@@ -276,6 +321,8 @@ Final taxonomy table:
 results/03_metaphlan/merged_abundance_table.tsv
 ```
 
+
+---
 
 ## 4. Functional profiling
 
@@ -358,7 +405,7 @@ Check:
 which bowtie2
 ```
 
-The output should point to the Conda environment:
+The output should point to the Conda environment.
 
 Example:
 
@@ -376,19 +423,16 @@ Possible causes:
 - insufficient memory
 - databases stored on unsupported filesystem
 
-Keep databases on the Linux filesystem:
 
-```
-/home/
-```
+Keep databases on a Linux filesystem (ext4).
 
-Avoid using:
+Avoid running databases directly from mounted Windows drives such as:
 
 ```
 /mnt/
 ```
 
-when running WSL2.
+when using WSL2.
 
 
 ---
@@ -425,7 +469,7 @@ If running the pipeline through WSL2, configure resources using:
 .wslconfig
 ```
 
-Example:
+Example configuration:
 
 ```ini
 [wsl2]
@@ -434,6 +478,9 @@ memory=56GB
 processors=12
 swap=8GB
 ```
+
+Values should be adapted according to available hardware resources.
+
 
 After changing the configuration restart WSL:
 
