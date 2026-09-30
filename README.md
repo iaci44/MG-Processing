@@ -57,7 +57,6 @@ The pipeline requires:
 - Conda / Miniconda / Mambaforge
 - Sufficient computational resources
 
-
 Recommended resources:
 
 - 12 CPU cores
@@ -99,7 +98,25 @@ cd MG-Processing
 
 ## 2. Install environments and databases
 
+The installation script is required only once for each server.
+
 Run:
+
+```bash
+bash install.sh
+```
+
+The installation script performs:
+
+- creation of Conda environments
+- installation of required software
+- download of reference databases
+- HUMAnN configuration
+
+
+After installation, the same environments and databases can be reused for multiple projects.
+
+A project name can optionally be provided:
 
 ```bash
 bash install.sh PROJECT_NAME
@@ -111,31 +128,18 @@ Example:
 bash install.sh TEST_pipeline
 ```
 
-If no project name is specified:
-
-```bash
-bash install.sh
-```
-
-the default project name is:
+If no project name is specified, the default project name is:
 
 ```
 MG_Project
 ```
-
-The installation script performs:
-
-- creation of Conda environments
-- installation of required software
-- download of reference databases
-- HUMAnN configuration
-- creation of project folders
 
 ---
 
 # Software environments
 
 The pipeline uses two independent Conda environments.
+
 
 ## MG-Shotgun
 
@@ -168,6 +172,53 @@ to avoid incompatible Python builds from Conda packages.
 
 ---
 
+# Activating environments
+
+The pipeline automatically activates the required Conda environments during execution.
+
+Manual activation is only needed for testing individual tools or troubleshooting.
+
+
+## Taxonomic environment
+
+To access MetaPhlAn, Bowtie2 and quality control tools:
+
+```bash
+conda activate MG-Shotgun
+```
+
+Available tools:
+
+- MetaPhlAn
+- Bowtie2
+- FastQC
+- fastp
+- samtools
+
+
+## Functional environment
+
+To access HUMAnN:
+
+```bash
+conda activate HUMAnN-func
+```
+
+Available tools:
+
+- HUMAnN
+- DIAMOND
+- HUMAnN database utilities
+
+
+To exit an environment:
+
+```bash
+conda deactivate
+```
+
+---
+
 # Database management
 
 Reference databases are installed once and reused across multiple projects.
@@ -191,6 +242,8 @@ databases/
 ```
 
 After the first installation, new projects do not require database re-downloads.
+
+The databases are shared between all projects located on the same server.
 
 ---
 
@@ -279,6 +332,8 @@ config/config.sh
 
 Each analysis is stored in an independent project folder.
 
+The project name is provided when launching the pipeline.
+
 Example:
 
 ```bash
@@ -303,7 +358,9 @@ My_Project/
 └── scripts/
 ```
 
-Different projects can share the same software environments and databases.
+Each project contains only its own input files, logs and results.
+
+Software environments and reference databases are shared between projects.
 
 Example:
 
@@ -314,6 +371,8 @@ Example:
 
 ~/new_dataset
 ```
+
+All projects use the same installed Conda environments and databases without requiring additional downloads.
 
 ---
 
@@ -354,6 +413,7 @@ raw_fastq/
 └── mgshot_S16781Nr2.2.fastq.gz
 ```
 
+
 The pipeline automatically detects samples from:
 
 ```
@@ -376,11 +436,7 @@ Launch the complete workflow:
 bash MG_pipeline.sh My_Project
 ```
 
-For long analyses it is recommended to use:
-
-```bash
-screen
-```
+For long analyses it is recommended to use `screen` or `tmux` to keep the pipeline running after disconnecting from the server.
 
 Example:
 
@@ -406,6 +462,7 @@ screen -r metagenomics_run
 ---
 
 # Pipeline steps
+
 
 ## 1. Quality control
 
@@ -533,6 +590,7 @@ Completed samples are automatically skipped.
 
 # Troubleshooting
 
+
 ## Conda activation error
 
 If:
@@ -602,6 +660,7 @@ Avoid using mounted Windows drives such as:
 ---
 
 # Output summary
+
 
 ## Taxonomic results
 
