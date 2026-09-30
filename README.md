@@ -11,6 +11,13 @@ This workflow automates the main steps required for shotgun metagenomic analysis
 - Functional profiling using HUMAnN
 - Merging and normalization of functional results
 
+The pipeline is designed to separate:
+
+- software environments
+- reference databases
+- individual analysis projects
+
+allowing multiple projects to be analyzed using the same installed tools and databases.
 
 ---
 
@@ -39,7 +46,6 @@ Functional profiling
 Merged results
 ```
 
-
 ---
 
 # Requirements
@@ -48,7 +54,7 @@ The pipeline requires:
 
 - Linux operating system
 - Bash shell
-- Conda / Miniconda
+- Conda / Miniconda / Mambaforge
 - Sufficient computational resources
 
 
@@ -56,8 +62,7 @@ Recommended resources:
 
 - 12 CPU cores
 - 50+ GB RAM
-- Large storage capacity for databases
-
+- Large storage capacity (>100 GB recommended)
 
 ---
 
@@ -73,12 +78,10 @@ MG-Processing/
 ├── restart_humann.sh
 │
 ├── config/
-│   ├── config.sh
-│   └── wslconfig_example
+│   └── config.sh
 │
 └── README.md
 ```
-
 
 ---
 
@@ -92,125 +95,165 @@ git clone https://github.com/iaci44/MG-Processing.git
 cd MG-Processing
 ```
 
+---
 
 ## 2. Install environments and databases
 
 Run:
 
 ```bash
+bash install.sh PROJECT_NAME
+```
+
+Example:
+
+```bash
+bash install.sh TEST_pipeline
+```
+
+If no project name is specified:
+
+```bash
 bash install.sh
 ```
 
-The installation script creates two Conda environments:
+the default project name is:
 
-- `MG-Shotgun`
-- `HUMAnN-func`
+```
+MG_Project
+```
 
-and installs the required software:
+The installation script performs:
+
+- creation of Conda environments
+- installation of required software
+- download of reference databases
+- HUMAnN configuration
+- creation of project folders
+
+---
+
+# Software environments
+
+The pipeline uses two independent Conda environments.
+
+## MG-Shotgun
+
+Contains:
 
 - MetaPhlAn
-- HUMAnN
 - Bowtie2
 - FastQC
 - fastp
+- samtools
+
+
+## HUMAnN-func
+
+Contains:
+
+- HUMAnN 3.9
+- Python 3.9
 - DIAMOND
+- MetaPhlAn dependencies
 
 
-The script also downloads:
+HUMAnN is installed using:
 
-- MetaPhlAn database
-- ChocoPhlAn database
-- UniRef90 database
-- Utility mapping database
+```
+Python 3.9 + pip
+```
 
+to avoid incompatible Python builds from Conda packages.
 
 ---
 
-# Configuration
+# Database management
 
-Pipeline parameters are stored in:
+Reference databases are installed once and reused across multiple projects.
+
+Default location:
 
 ```
-config/config.sh
+~/databases/
 ```
 
-The configuration file contains:
+Structure:
 
-- database paths
-- computational resources
-- software parameters
+```
+databases/
 
-
-Example:
-
-```bash
-THREADS=12
+├── metaphlan/
+├── chocophlan/
+├── uniref/
+├── utility_mapping/
+└── host_human/
 ```
 
-Modify these parameters according to the available system resources.
-
-Database paths are defined in:
-
-```bash
-HUMAN_DB
-METAPHLAN_DB
-CHOCOPHLAN_DB
-UNIREF_DB
-UTILITY_DB
-```
-
+After the first installation, new projects do not require database re-downloads.
 
 ---
 
-# Project setup
+# Reference databases
 
-The project name is provided when launching the pipeline.
+The installation downloads:
 
-Example:
 
-```bash
-bash MG_pipeline.sh My_Project
-```
+## MetaPhlAn database
 
-The pipeline will automatically create and use the following project directory:
+Used for taxonomic profiling.
 
-```
-$HOME/My_Project/
-```
-
-with the structure:
+Location:
 
 ```
-My_Project/
-
-├── raw_fastq/
-├── metadata/
-├── results/
-└── logs/
+~/databases/metaphlan/
 ```
 
 
-This allows multiple datasets to be analyzed independently without modifying the pipeline code.
+## ChocoPhlAn database
 
+Used by HUMAnN nucleotide mapping.
+
+Location:
+
+```
+~/databases/chocophlan/
+```
+
+
+## UniRef90 database
+
+Used by HUMAnN protein alignment.
+
+Location:
+
+```
+~/databases/uniref/
+```
+
+
+## Utility mapping database
+
+Used for HUMAnN pathway reconstruction.
+
+Location:
+
+```
+~/databases/utility_mapping/
+```
 
 ---
 
 # Human genome database
 
-The pipeline requires a Bowtie2 index of the human genome for host read removal.
+The pipeline requires a Bowtie2 index of the human genome for host DNA removal.
 
-This database is **not downloaded automatically**.
+This database is not downloaded automatically.
 
-The expected location is:
-
-```
-~/databases/host_human/human_GRCh38
-```
-
-The path can be modified in:
+Expected location:
 
 ```
-config/config.sh
+~/databases/host_human/
 ```
 
 The folder should contain Bowtie2 index files:
@@ -224,6 +267,53 @@ human_GRCh38.rev.1.bt2
 human_GRCh38.rev.2.bt2
 ```
 
+The path can be modified in:
+
+```
+config/config.sh
+```
+
+---
+
+# Project setup
+
+Each analysis is stored in an independent project folder.
+
+Example:
+
+```bash
+bash MG_pipeline.sh My_Project
+```
+
+The pipeline automatically creates:
+
+```
+$HOME/My_Project/
+```
+
+with:
+
+```
+My_Project/
+
+├── raw_fastq/
+├── metadata/
+├── results/
+├── logs/
+└── scripts/
+```
+
+Different projects can share the same software environments and databases.
+
+Example:
+
+```
+~/TEST_pipeline
+
+~/epilepsy_project
+
+~/new_dataset
+```
 
 ---
 
@@ -237,7 +327,7 @@ FASTQ files must be stored in:
 My_Project/raw_fastq/
 ```
 
-The expected naming convention is:
+Expected naming convention:
 
 ```
 sample01.1.fastq.gz
@@ -253,10 +343,21 @@ where:
 - `.2.fastq.gz` corresponds to reverse reads (R2)
 
 
-The pipeline automatically detects samples from files ending with:
+Example:
 
 ```
-.1.fastq.gz
+raw_fastq/
+
+├── mgshot_S16781Nr1.1.fastq.gz
+├── mgshot_S16781Nr1.2.fastq.gz
+├── mgshot_S16781Nr2.1.fastq.gz
+└── mgshot_S16781Nr2.2.fastq.gz
+```
+
+The pipeline automatically detects samples from:
+
+```
+*.1.fastq.gz
 ```
 
 and creates:
@@ -265,45 +366,42 @@ and creates:
 metadata/samples.txt
 ```
 
-containing the sample names used throughout the workflow.
-
-
-Example:
-
-```
-raw_fastq/
-
-├── sample01.1.fastq.gz
-├── sample01.2.fastq.gz
-├── sample02.1.fastq.gz
-└── sample02.2.fastq.gz
-```
-
-
 ---
 
 # Running the pipeline
 
-Launch the complete workflow by specifying the project name:
+Launch the complete workflow:
 
 ```bash
 bash MG_pipeline.sh My_Project
 ```
 
-
-For long analyses (especially HUMAnN), run in background:
-
-```bash
-nohup bash MG_pipeline.sh My_Project > logs/pipeline.log 2>&1 &
-```
-
-
-Save the process ID:
+For long analyses it is recommended to use:
 
 ```bash
-echo $! > logs/pipeline.pid
+screen
 ```
 
+Example:
+
+```bash
+screen -S metagenomics_run
+
+bash MG_pipeline.sh My_Project
+```
+
+Detach from screen:
+
+```
+CTRL+A
+D
+```
+
+Reconnect:
+
+```bash
+screen -r metagenomics_run
+```
 
 ---
 
@@ -320,6 +418,12 @@ Optional trimming can be enabled using:
 - fastp
 
 
+Output:
+
+```
+results/01_qc/
+```
+
 ---
 
 ## 2. Host DNA removal
@@ -335,14 +439,13 @@ Output:
 results/02_host_removed/
 ```
 
-
 ---
 
 ## 3. Taxonomic profiling
 
 Taxonomic composition is estimated using:
 
-- MetaPhlAn
+- MetaPhlAn 4
 
 
 Output:
@@ -351,13 +454,11 @@ Output:
 results/03_metaphlan/
 ```
 
-
 Final taxonomy table:
 
 ```
 results/03_metaphlan/merged_abundance_table.tsv
 ```
-
 
 ---
 
@@ -365,7 +466,7 @@ results/03_metaphlan/merged_abundance_table.tsv
 
 Functional characterization is performed using:
 
-- HUMAnN
+- HUMAnN 3.9
 
 
 Output:
@@ -374,12 +475,11 @@ Output:
 results/04_humann3/
 ```
 
-
 ---
 
 # Monitoring HUMAnN
 
-HUMAnN analyses can require several hours or days depending on dataset size.
+HUMAnN analyses can require several hours depending on dataset size.
 
 To monitor a running analysis:
 
@@ -393,7 +493,6 @@ The monitoring script reports:
 - log progress
 - completed samples
 - pipeline status
-
 
 ---
 
@@ -418,25 +517,39 @@ with:
 - pathway coverage
 - CPM normalized tables
 
-
 ---
 
 # Restart interrupted runs
 
-If a HUMAnN sample gets stuck:
+If a HUMAnN sample fails:
 
 ```bash
 bash restart_humann.sh SAMPLE_NAME
 ```
 
-Completed samples are automatically skipped during restart.
-
+Completed samples are automatically skipped.
 
 ---
 
 # Troubleshooting
 
-## Bowtie2 not found or wrong version
+## Conda activation error
+
+If:
+
+```
+CondaError: Run 'conda init' before 'conda activate'
+```
+
+appears, scripts must load Conda before activating environments:
+
+```bash
+source ~/mambaforge/etc/profile.d/conda.sh
+```
+
+---
+
+## Bowtie2 not found
 
 Check:
 
@@ -449,9 +562,24 @@ The output should point to the Conda environment.
 Example:
 
 ```
-~/miniconda3/envs/MG-Shotgun/bin/bowtie2
+~/mambaforge/envs/MG-Shotgun/bin/bowtie2
 ```
 
+---
+
+## MetaPhlAn database not found
+
+Check:
+
+```bash
+ls ~/databases/metaphlan
+```
+
+A complete MetaPhlAn database should contain Bowtie2 index files:
+
+```
+*.bt2l
+```
 
 ---
 
@@ -460,73 +588,16 @@ Example:
 Possible causes:
 
 - insufficient memory
-- databases stored on unsupported filesystem
+- database stored on unsupported filesystem
 
 
-Keep databases on a Linux filesystem (ext4).
+Keep databases on a Linux filesystem.
 
-Avoid running databases directly from mounted Windows drives such as:
+Avoid using mounted Windows drives such as:
 
 ```
 /mnt/
 ```
-
-when using WSL2.
-
-
----
-
-## Multiple HUMAnN processes
-
-Check:
-
-```bash
-pgrep -c -f humann.sh
-```
-
-If multiple processes are running, stop duplicated jobs before restarting.
-
-
----
-
-## Long overnight runs
-
-For long analyses:
-
-- use `nohup`
-- use `tmux`
-- disable system sleep
-
-
----
-
-# WSL2 users
-
-If running the pipeline through WSL2, configure resources using:
-
-```
-.wslconfig
-```
-
-Example configuration:
-
-```ini
-[wsl2]
-
-memory=56GB
-processors=12
-swap=8GB
-```
-
-Values should be adapted according to available hardware resources.
-
-
-After changing the configuration restart WSL:
-
-```bash
-wsl --shutdown
-```
-
 
 ---
 
@@ -535,14 +606,14 @@ wsl --shutdown
 ## Taxonomic results
 
 ```
-results/03_metaphlan/merged_abundance_table.tsv
+My_Project/results/03_metaphlan/
 ```
 
 
 ## Functional results
 
 ```
-results/04_humann3/merged/
+My_Project/results/04_humann3/
 ```
 
 
