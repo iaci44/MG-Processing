@@ -13,46 +13,17 @@ set -e
 
 source config/config.sh
 
-#############################################################
-# CHECK DATABASES
-#############################################################
-
-if [ ! -f "${HUMAN_DB}.1.bt2" ] && [ ! -f "${HUMAN_DB}.1.bt2l" ]
-
-then
-
-echo "ERROR: Human Bowtie2 database not found:"
-echo "${HUMAN_DB}"
-
-exit 1
-
-fi
-#############################################################
-# CREATE REQUIRED DIRECTORIES
-#############################################################
-
-mkdir -p \
-${PROJECT_DIR}/metadata \
-${PROJECT_DIR}/results/01_qc \
-${PROJECT_DIR}/results/02_host_removed \
-${PROJECT_DIR}/results/03_metaphlan \
-${PROJECT_DIR}/results/04_humann3 \
-${PROJECT_DIR}/logs
-
 
 #############################################################
-# GLOBAL LOGGING
+# CREATE DIRECTORIES
 #############################################################
 
-exec > >(tee -i ${LOG_DIR}/pipeline.log)
-exec 2>&1
-
-
-
-echo "======================================"
-echo " Shotgun Metagenomics Pipeline"
-echo "======================================"
-
+mkdir -p ${PROJECT_DIR}/metadata
+mkdir -p ${PROJECT_DIR}/results/01_qc
+mkdir -p ${PROJECT_DIR}/results/02_host_removed
+mkdir -p ${PROJECT_DIR}/results/03_metaphlan
+mkdir -p ${PROJECT_DIR}/results/04_humann3
+mkdir -p ${PROJECT_DIR}/logs
 
 
 #############################################################
@@ -61,14 +32,12 @@ echo "======================================"
 
 echo "Creating sample list..."
 
-
 cd ${PROJECT_DIR}
 
 
-ls raw_fastq/*_R1.fastq.gz \
-| sed 's|.*/||; s|_R1.fastq.gz||' \
+ls raw_fastq/*.1.fastq.gz \
+| sed 's|.*/||; s|.1.fastq.gz||' \
 > metadata/samples.txt
-
 
 
 echo "Number of samples:"
@@ -92,12 +61,10 @@ echo "======================================"
 conda activate MG-Shotgun
 
 
-
 fastqc \
 -t ${THREADS} \
 -o ${PROJECT_DIR}/results/01_qc \
 ${PROJECT_DIR}/raw_fastq/*.fastq.gz
-
 
 
 echo "FastQC completed"
@@ -105,7 +72,7 @@ echo "FastQC completed"
 
 
 #############################################################
-# OPTIONAL TRIMMING WITH FASTP
+# OPTIONAL TRIMMING
 #############################################################
 
 RUN_TRIMMING=false
@@ -118,17 +85,15 @@ then
 echo "Running fastp trimming"
 
 
-
 while read S
 
 do
 
-
 fastp \
--i ${PROJECT_DIR}/raw_fastq/${S}_R1.fastq.gz \
--I ${PROJECT_DIR}/raw_fastq/${S}_R2.fastq.gz \
--o ${PROJECT_DIR}/results/01_qc/${S}_trim_R1.fastq.gz \
--O ${PROJECT_DIR}/results/01_qc/${S}_trim_R2.fastq.gz \
+-i ${PROJECT_DIR}/raw_fastq/${S}.1.fastq.gz \
+-I ${PROJECT_DIR}/raw_fastq/${S}.2.fastq.gz \
+-o ${PROJECT_DIR}/results/01_qc/${S}_trim.1.fastq.gz \
+-O ${PROJECT_DIR}/results/01_qc/${S}_trim.2.fastq.gz \
 --detect_adapter_for_pe \
 --qualified_quality_phred 20 \
 --length_required 20 \
@@ -136,16 +101,12 @@ fastp \
 -h ${PROJECT_DIR}/results/01_qc/${S}_fastp.html
 
 
-
 done < ${PROJECT_DIR}/metadata/samples.txt
-
 
 
 else
 
 echo "Trimming skipped"
-
-
 
 fi
 
@@ -157,11 +118,14 @@ fi
 #############################################################
 
 echo "======================================"
-echo "STEP 2 - HOST READ REMOVAL"
+echo "STEP 2 - HOST REMOVAL"
 echo "======================================"
 
 
 conda activate MG-Shotgun
+
+
+HOST=${HUMAN_DB}
 
 
 while read S
@@ -169,12 +133,11 @@ while read S
 do
 
 
-if [ -s ${PROJECT_DIR}/results/02_host_removed/${S}_clean_R1.fastq.gz ]
+if [ -s ${PROJECT_DIR}/results/02_host_removed/${S}_clean.1.fastq.gz ]
 
 then
 
-echo "Skipping ${S}: host removal already completed"
-
+echo "Skipping ${S}: already processed"
 continue
 
 fi
@@ -184,14 +147,13 @@ fi
 echo "Removing host reads: ${S}"
 
 
-
 bowtie2 \
--x ${HUMAN_DB} \
--1 ${PROJECT_DIR}/raw_fastq/${S}_R1.fastq.gz \
--2 ${PROJECT_DIR}/raw_fastq/${S}_R2.fastq.gz \
+-x ${HOST} \
+-1 ${PROJECT_DIR}/raw_fastq/${S}.1.fastq.gz \
+-2 ${PROJECT_DIR}/raw_fastq/${S}.2.fastq.gz \
 -p ${THREADS} \
 --very-sensitive \
---un-conc-gz ${PROJECT_DIR}/results/02_host_removed/${S}_clean_R%.fastq.gz \
+--un-conc-gz ${PROJECT_DIR}/results/02_host_removed/${S}_clean.fastq.gz \
 -S /dev/null \
 2> ${PROJECT_DIR}/logs/${S}_host.log
 
@@ -206,18 +168,16 @@ echo "Host removal completed"
 
 
 
-
 #############################################################
-# STEP 3 - TAXONOMIC PROFILING (MetaPhlAn)
+# STEP 3 - METAPHLAN TAXONOMIC PROFILING
 #############################################################
 
 echo "======================================"
-echo "STEP 3 - METAPHLAN TAXONOMIC PROFILE"
+echo "STEP 3 - METAPHLAN"
 echo "======================================"
 
 
 conda activate MG-Shotgun
-
 
 
 while read S
@@ -230,7 +190,6 @@ if [ -s ${PROJECT_DIR}/results/03_metaphlan/${S}_profile.tsv ]
 then
 
 echo "Skipping ${S}: MetaPhlAn already completed"
-
 continue
 
 fi
@@ -240,9 +199,8 @@ fi
 echo "Running MetaPhlAn: ${S}"
 
 
-
 metaphlan \
-${PROJECT_DIR}/results/02_host_removed/${S}_clean_R1.fastq.gz,${PROJECT_DIR}/results/02_host_removed/${S}_clean_R2.fastq.gz \
+${PROJECT_DIR}/results/02_host_removed/${S}_clean.1.fastq.gz,${PROJECT_DIR}/results/02_host_removed/${S}_clean.2.fastq.gz \
 --input_type fastq \
 --bowtie2db ${METAPHLAN_DB} \
 --bowtie2out ${PROJECT_DIR}/results/03_metaphlan/${S}_bt2.bz2 \
@@ -257,13 +215,11 @@ done < ${PROJECT_DIR}/metadata/samples.txt
 
 
 
-
 #############################################################
 # MERGE METAPHLAN RESULTS
 #############################################################
 
-echo "Merging MetaPhlAn profiles..."
-
+echo "Merging MetaPhlAn tables..."
 
 
 merge_metaphlan_tables.py \
@@ -277,18 +233,16 @@ echo "MetaPhlAn completed"
 
 
 
-
 #############################################################
-# STEP 4 - FUNCTIONAL PROFILING (HUMAnN)
+# STEP 4 - HUMANN FUNCTIONAL PROFILING
 #############################################################
 
 echo "======================================"
-echo "STEP 4 - HUMAnN FUNCTIONAL PROFILE"
+echo "STEP 4 - HUMANN"
 echo "======================================"
 
 
 conda activate HUMAnN-func
-
 
 
 IN=${PROJECT_DIR}/results/02_host_removed
@@ -302,12 +256,11 @@ mkdir -p ${OUT}/logs
 
 
 
+SORTED=$(while read S
 
+do
 
-SORTED=$(while read S; do
-
-
-FILE=${IN}/${S}_clean_R1.fastq.gz
+FILE=${IN}/${S}_clean.1.fastq.gz
 
 
 if [ -f "$FILE" ]
@@ -326,12 +279,9 @@ done < ${PROJECT_DIR}/metadata/samples.txt \
 
 
 
-
 for S in ${SORTED}
 
-
 do
-
 
 
 SAMPLE_OUT=${OUT}/per_sample/${S}
@@ -342,8 +292,7 @@ if ls ${SAMPLE_OUT}/*_genefamilies.tsv 1>/dev/null 2>&1
 
 then
 
-echo "Skipping ${S}: HUMAnN already completed"
-
+echo "Skipping ${S}: already completed"
 continue
 
 fi
@@ -358,11 +307,9 @@ echo "Running HUMAnN: ${S}"
 
 
 
-
-cat <(zcat ${IN}/${S}_clean_R1.fastq.gz) \
-<(zcat ${IN}/${S}_clean_R2.fastq.gz) \
+cat <(zcat ${IN}/${S}_clean.1.fastq.gz) \
+<(zcat ${IN}/${S}_clean.2.fastq.gz) \
 | gzip > ${SAMPLE_OUT}/${S}_concat.fastq.gz
-
 
 
 
@@ -379,8 +326,6 @@ humann \
 
 
 
-
-
 rm -f ${SAMPLE_OUT}/${S}_concat.fastq.gz
 
 
@@ -390,9 +335,3 @@ done
 
 
 echo "HUMAnN completed"
-
-
-
-echo "======================================"
-echo " PIPELINE FINISHED"
-echo "======================================"
