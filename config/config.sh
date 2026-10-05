@@ -3,64 +3,129 @@
 #############################################################
 # Shotgun Metagenomics Pipeline Configuration
 #############################################################
+#
+# This file contains pipeline parameters and database paths.
+#
+# Conda environments are managed separately by install.sh.
+#
+# Reference databases are stored in a shared directory and
+# reused across different analysis projects.
+#
+#############################################################
 
 
 #############################################################
-# PROJECT
-#############################################################
-
-# Project name is provided when running MG_pipeline.sh
-# Example:
-# bash MG_pipeline.sh My_Project
-
-#############################
 # RESOURCES
-#############################
+#############################################################
 
 THREADS=12
 
 
-
-#############################
+#############################################################
 # INPUT / OUTPUT DIRECTORIES
-#############################
+#############################################################
 
-RAW_DIR=${PROJECT_DIR}/raw_fastq
+RAW_DIR="${PROJECT_DIR}/raw_fastq"
 
-METADATA_DIR=${PROJECT_DIR}/metadata
+METADATA_DIR="${PROJECT_DIR}/metadata"
 
-RESULTS_DIR=${PROJECT_DIR}/results
+RESULTS_DIR="${PROJECT_DIR}/results"
 
-LOG_DIR=${PROJECT_DIR}/logs
+LOG_DIR="${PROJECT_DIR}/logs"
 
-HUMANN_RESULTS_DIR=${RESULTS_DIR}/04_humann3
-
-
-
-#############################
-# DATABASES
-#############################
-
-# Human genome Bowtie2 index
-HUMAN_DB=${HOME}/databases/host_human/human_GRCh38
+HUMANN_RESULTS_DIR="${RESULTS_DIR}/04_humann3"
 
 
-# MetaPhlAn database
-METAPHLAN_DB=${HOME}/databases/metaphlan
+#############################################################
+# SHARED DATABASE ROOT
+#############################################################
+#
+# All reference databases are stored in this shared directory.
+#
+# The directory is shared across users and projects.
+#
+#############################################################
+
+DATABASE_DIR="/home/biox/databases"
 
 
-# HUMAnN databases
-CHOCOPHLAN_DB=${HOME}/databases/chocophlan
+#############################################################
+# HUMAN GENOME DATABASE
+#############################################################
+#
+# Bowtie2 index prefix used for host DNA removal.
+#
+# Expected files:
+#
+# human_GRCh38.1.bt2
+# human_GRCh38.2.bt2
+# human_GRCh38.3.bt2
+# human_GRCh38.4.bt2
+# human_GRCh38.rev.1.bt2
+# human_GRCh38.rev.2.bt2
+#
+#############################################################
 
-UNIREF_DB=${HOME}/databases/uniref
-
-UTILITY_DB=${HOME}/databases/utility_mapping
+HUMAN_DB="${DATABASE_DIR}/host_human/human_GRCh38"
 
 
+#############################################################
+# METAPHLAN DATABASE - MG-SHOTGUN
+#############################################################
+#
+# Used by the MG-Shotgun environment.
+#
+# MetaPhlAn version:
+# 4.2.5
+#
+# Database:
+# mpa_vJan26_CHOCOPhlAnSGB_202605
+#
+#############################################################
 
-#############################
-# SOFTWARE SETTINGS
-#############################
+METAPHLAN_DB="${DATABASE_DIR}/metaphlan"
 
-# MetaPhlAn index used by HUMAnN
+
+#############################################################
+# METAPHLAN DATABASE - HUMANN
+#############################################################
+#
+# Used by HUMAnN 3.9 through the MetaPhlAn version
+# installed inside HUMAnN-func.
+#
+# MetaPhlAn version:
+# 4.1.1
+#
+# Database:
+# mpa_vJun23_CHOCOPhlAnSGB_202403
+#
+# IMPORTANT:
+# This database is kept separate from the MetaPhlAn
+# database used by MG-Shotgun.
+#
+#############################################################
+
+HUMANN_METAPHLAN_DB="${DATABASE_DIR}/metaphlan_humann"
+
+
+#############################################################
+# HUMANN DATABASES
+#############################################################
+
+CHOCOPHLAN_DB="${DATABASE_DIR}/chocophlan/chocophlan"
+
+UNIREF_DB="${DATABASE_DIR}/uniref/uniref"
+
+UTILITY_DB="${DATABASE_DIR}/utility_mapping/utility_mapping"
+
+
+#############################################################
+# HUMANN METAPHLAN INDEX
+#############################################################
+#
+# Index corresponding to the MetaPhlAn database used
+# inside HUMAnN-func.
+#
+#############################################################
+
 HUMANN_INDEX="mpa_vJun23_CHOCOPhlAnSGB_202403"
